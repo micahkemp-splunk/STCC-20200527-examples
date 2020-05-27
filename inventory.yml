@@ -1,0 +1,48 @@
+all:
+  children:
+    docker_nodes:
+      children:
+        docker_build_hosts:
+          hosts:
+            localhost:
+              ansible_connection: local
+
+    docker_images_and_services:
+      children:
+        docker_build_images:
+          vars:
+            splunk_tgz_url: # TODO - fill this in yourself
+            splunk_admin_user: admin
+            splunk_admin_password: stcc
+            license_master_uri: https://licensemaster:8089 # this obviously won't work, but it allows it to build
+            common_stage_items:
+              - type: copy
+                src: "{{ inventory_dir }}/files/production/production_outputs"
+                dest: splunk
+                dest_sub_path: etc/apps/production_outputs
+                condition: "{{ build_vars.primary_build and not build_vars.dev_build|default(false) }}"
+              - type: copy
+                src: "{{ inventory_dir }}/files/development/development_outputs"
+                dest: splunk
+                dest_sub_path: etc/apps/development_outputs
+                condition: "{{ build_vars.dev_build|default(false) }}"
+
+            common_build_variants:
+              - build_vars:
+                  primary_build: true
+                  dev_build: true
+                  tag: "{{ version }}-dev"
+                  push_when: "{{ true }}"
+
+          hosts:
+            stcc:
+              version: 1.0.0
+              host_stage_items:
+                - type: copy
+                  src: "{{ inventory_dir }}/files/common/TA-STCC"
+                  dest: splunk
+                  dest_sub_path: etc/apps/TA-STCC
+                - type: copy
+                  src: "{{ inventory_dir }}/files/common/STCC_inputs"
+                  dest: splunk
+                  dest_sub_path: etc/apps/STCC_inputs
